@@ -13,7 +13,7 @@
 #include "hardware/pwm.h"
 
 #define MOTOR_CONFIG_TAG "MOTOR_CONFIG"
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
 /**
  * @brief Traduce códigos de error numéricos a descripciones de texto legibles.
  * 

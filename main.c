@@ -3,6 +3,7 @@
 #include "pid.h"
 #include "motor.h"
 #include "driver_encoder_optico.h"
+#include "encoder_rot.h"
 
 #define PIN_PWM         16
 #define PWM_FREQ        15000
@@ -21,7 +22,9 @@
 #define MS_TO_S         1000.0f
 #define SETPOINT        500.0f
 #define DEADBAND        10
-
+#define PIN_DT 13
+#define PIN_CLK 12
+#define PIN_SW 14
 
 static float32_t fir_state[BLOCK_SIZE + NUM_TAPS - 1];
 
@@ -30,6 +33,14 @@ const float coef[BUFFER_SIZE] = {
     0.062697470097659f, 0.074484345011617f, 0.083838557840372f, 0.089844373342472f, 0.091913843429340f, 0.089844373342472f,
     0.083838557840372f, 0.074484345011617f, 0.062697470097659f, 0.049631796255090f, 0.036566341700744f, 0.024780055419825f,
     0.015426603040574f, 0.009421423151889f, 0.007352112425088f
+};
+
+enc_rot_t enc_rot;
+
+enc_rot_conf_t enc_rot_conf = {
+    .pin_clk = PIN_CLK,
+    .pin_dt = PIN_DT,
+    .pin_sw = PIN_SW,
 };
 
 arm_fir_instance_f32 fir;
@@ -72,10 +83,17 @@ void isr_encoder(uint gpio, uint32_t events){
     }
 }
 
+void master_callback(uint gpio, uint32_t events){
+    if (gpio == PIN_ENCODER){
+        isr_encoder(gpio, events);
+    }
+    else if (gpio == PIN_CLK || gpio == PIN_SW){
+        encoder_rot_isr(gpio, events);
+    }
+}
+
 void main()
 {   
-    float error;
-    float pwm = 0;
     stdio_init_all();
     sleep_ms(5000);
     motor_config(&motor_a, &motor_conf);
@@ -83,9 +101,9 @@ void main()
     motor_set_lvl(&motor_a, 0);
 
     encoder_init(&enc, &enc_config, fir_state, (void *)isr_encoder);
+    // encoder_rot_config(&enc_rot, &enc_rot_conf, (void *)master_callback);
 
     while (true){
-        
         encoder_get_freq(&enc);
         encoder_get_rpm_filtered(&enc);
         // encoder_get_rpm_raw(&enc);
@@ -93,7 +111,7 @@ void main()
         pid_set_rpm(enc.rpm_filtered, SETPOINT, &pid);
         motor_set_lvl(&motor_a, pid.last_output);
         printf("%.2f, %.2f, %.2f, %.2f\n", enc.rpm_filtered, pid.current_error, SETPOINT, pid.last_output);
-
+        printf("Contador; %d, Direccion: %d\n", enc_rot.counter, enc_rot.event);
         sleep_ms(SAMPLE_RATE_MS);
     }
 }

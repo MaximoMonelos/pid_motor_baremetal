@@ -1,11 +1,10 @@
 #include "driver_encoder_optico.h"
+#include "pico/stdlib.h"
 
 #define US_TO_MS        1000.0f
 #define MS_TO_S         1000.0f
 #define SEG_TO_MIN      60.0f
-#define PIN_ENCODER     10
 #define BLOCK_SIZE      1
-#define TICKS_ENCODER   10.0f
 
 void encoder_init(encoder_t *enc, encoder_config_t *conf_enc, float *fir_state, void *isr){
 
@@ -55,7 +54,7 @@ void encoder_get_freq(encoder_t *enc){
 
 void encoder_get_rpm_raw(encoder_t *enc){
     if(enc->freq > 0){   // 10 pulsos = 1 rev 1 min = 60s
-        enc->rpm_raw = enc->freq / TICKS_ENCODER * SEG_TO_MIN;
+        enc->rpm_raw = enc->freq / enc->config.ticks * SEG_TO_MIN;
         return;
     } 
     enc->rpm_raw = 0.0f;
@@ -64,7 +63,7 @@ void encoder_get_rpm_raw(encoder_t *enc){
 
 void encoder_get_rpm_filtered(encoder_t *enc){
     if(enc->freq > 0){   // 10 pulsos = 1 rev 1 min = 60s
-        enc->rpm_raw = enc->freq / TICKS_ENCODER * SEG_TO_MIN;
+        enc->rpm_raw = enc->freq / enc->config.ticks * SEG_TO_MIN;
     }else{
         enc->rpm_raw = 0.0f;
     }
