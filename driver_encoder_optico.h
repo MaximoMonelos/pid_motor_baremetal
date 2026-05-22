@@ -48,6 +48,7 @@ extern "C" {
 #include "pico/stdlib.h"
 #include "dsp/filtering_functions.h"
 #include "arm_math.h"
+#define PERIOD_BUFFER_SIZE  10
 
 /**
  * @struct encoder_config_t
@@ -124,7 +125,8 @@ typedef struct {
     /** @brief Instancia del filtro FIR de ARM CMSIS-DSP */
     arm_fir_instance_f32 fir;
     /** @brief Buffer de estado del filtro FIR (memoria de trabajo) */
-    float *fir_state; 
+    float *fir_state;
+    
 } encoder_internal_t;
 
 

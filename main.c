@@ -12,10 +12,10 @@
 //----Motor A---
 #define PIN_A_1         22
 #define PIN_A_2         20
-#define PIN_ENCODER     10
-#define TICKS_ENCODER   10.0f
+#define PIN_ENCODER     11
+#define TICKS_ENCODER   20.0f
 
-#define SAMPLE_RATE_MS  100u
+#define SAMPLE_RATE_MS  50u
 #define BUFFER_SIZE     21
 #define NUM_TAPS        BUFFER_SIZE
 #define BLOCK_SIZE      1
@@ -77,20 +77,23 @@ motor_config_t motor_conf = {
     .frequency_hz = PWM_FREQ,
 };
 
+
+//Subida y bajada isr
+// limite fisico encoder
 void isr_encoder(uint gpio, uint32_t events){
     if(gpio == PIN_ENCODER){
         enc.internal.counter_pulses++;
     }
 }
 
-void master_callback(uint gpio, uint32_t events){
-    if (gpio == PIN_ENCODER){
-        isr_encoder(gpio, events);
-    }
-    else if (gpio == PIN_CLK || gpio == PIN_SW){
-        encoder_rot_isr(gpio, events);
-    }
-}
+// void master_callback(uint gpio, uint32_t events){
+//     if (gpio == PIN_ENCODER){
+//         isr_encoder(gpio, events);
+//     }
+//     else if (gpio == PIN_CLK || gpio == PIN_SW){
+//         encoder_rot_isr(gpio, events);
+//     }
+// }
 
 void main()
 {   
@@ -98,20 +101,20 @@ void main()
     sleep_ms(5000);
     motor_config(&motor_a, &motor_conf);
 
-    motor_set_lvl(&motor_a, 0);
+    motor_set_lvl(&motor_a, 80);
 
     encoder_init(&enc, &enc_config, fir_state, (void *)isr_encoder);
     // encoder_rot_config(&enc_rot, &enc_rot_conf, (void *)master_callback);
 
     while (true){
         encoder_get_freq(&enc);
-        encoder_get_rpm_filtered(&enc);
+        // encoder_get_rpm_filtered(&enc);
         // encoder_get_rpm_raw(&enc);
-        // printf("%.2f\n", enc.rpm_filtered);
-        pid_set_rpm(enc.rpm_filtered, SETPOINT, &pid);
-        motor_set_lvl(&motor_a, pid.last_output);
-        printf("%.2f, %.2f, %.2f, %.2f\n", enc.rpm_filtered, pid.current_error, SETPOINT, pid.last_output);
-        printf("Contador; %d, Direccion: %d\n", enc_rot.counter, enc_rot.event);
+        printf("%.2f\n", enc.freq);
+        // pid_set_rpm(enc.rpm_filtered, SETPOINT, &pid);
+        // motor_set_lvl(&motor_a, pid.last_output);
+        // printf("%.2f, %.2f, %.2f, %.2f\n", enc.rpm_filtered, pid.current_error, SETPOINT, pid.last_output);
+        // printf("Contador; %d, Direccion: %d\n", enc_rot.counter, enc_rot.event);
         sleep_ms(SAMPLE_RATE_MS);
     }
 }
