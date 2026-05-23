@@ -1,0 +1,74 @@
+; ============================================================
+; freq_encoder.pio
+;
+; Mide el periodo de la señal del encoder optico.
+; Cuenta ciclos de clock del PIO entre flancos de SUBIDA
+; consecutivos y pushea el valor al RX FIFO.
+;
+; Clock PIO = 125MHz -> 1 ciclo = 8ns de resolucion
+;
+; Uso desde C:
+;   uint32_t cycles = pio_sm_get_blocking(pio, sm);
+;   float freq_hz   = clock_get_hz(clk_sys) / (float)cycles;
+; ============================================================
+
+.program freq_encoder
+
+; X = contador descendente de ciclos (32 bits)
+; Estrategia: empezar en 0xFFFFFFFF y decrementar.
+;             Al terminar: ciclos = 0xFFFFFFFF - X
+
+.wrap_target
+
+    ; --- Esperar flanco de subida ---
+    wait 0 pin 0        ; esperar nivel bajo
+    wait 1 pin 0        ; esperar subida -> empieza el periodo
+
+    ; --- Iniciar contador en 0xFFFFFFFF ---
+    set x, 0
+    mov x, ~x           ; X = 0xFFFFFFFF = 4294967295
+
+count:
+    jmp x-- check       ; decrementa X, salta siempre (mientras X > 0)
+    ; Si llegamos aqui X llego a 0 -> overflow (motor muy lento o parado)
+    mov isr, null       ; pushear 0 = indicador de timeout
+    push noblock
+    jmp .wrap_target    ; reiniciar
+
+check:
+    jmp pin count       ; si el pin sigue alto, seguir contando
+    ; Pin bajo -> fin del semiciclo alto
+
+    ; Ciclos contados = 0xFFFFFFFF - X = ~X (complemento)
+    mov isr, ~x
+    push noblock        ; enviar al FIFO sin bloquear el PIO
+
+.wrap                   ; volver al inicio para el siguiente periodo
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+static inline void freq_encoder_program_init(PIO pio, uint sm,
+                                              uint offset, uint pin)
+{
+    pio_sm_config c = freq_encoder_program_get_default_config(offset);
+
+    // Pin 0 del programa = pin fisico del encoder
+    sm_config_set_in_pins(&c, pin);
+    sm_config_set_jmp_pin(&c, pin);
+
+    // Shift sin autopush (usamos push explicito en el programa)
+    sm_config_set_in_shift(&c, false, false, 32);
+
+    // Inicializar pin como entrada en el PIO
+    pio_gpio_init(pio, pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false); // input
+
+    // Clock del PIO = clock del sistema sin divisor (maxima resolucion)
+    sm_config_set_clkdiv(&c, 1.0f);
+
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

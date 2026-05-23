@@ -58,6 +58,7 @@ target_link_libraries(${PROJECT_NAME}
         pico_stdlib
         hardware_pwm
         cmsis_lib
+        hardware_pio
 )
 
 # Add the standard include files to the build
