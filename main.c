@@ -5,18 +5,19 @@
 #include "driver_encoder_optico.h"
 #include "encoder_rot.h"
 
-#define PIN_PWM         16
+#define PIN_PWM         17
 #define PWM_FREQ        15000
 #define CLK_DIV         1
 #define PWM_WRAP        3750
 //----Motor A---
 #define PIN_A_1         22
 #define PIN_A_2         20
-#define PIN_ENCODER     10
+#define PIN_ENCODER     11
 #define TICKS_ENCODER   10.0f
 
-#define SAMPLE_RATE_MS  100u
-#define BUFFER_SIZE     21
+#define SAMPLE_RATE_MS  50u
+// #define BUFFER_SIZE     21
+#define BUFFER_SIZE     15
 #define NUM_TAPS        BUFFER_SIZE
 #define BLOCK_SIZE      1
 #define MS_TO_S         1000.0f
@@ -28,11 +29,17 @@
 
 static float32_t fir_state[BLOCK_SIZE + NUM_TAPS - 1];
 
+// const float coef[BUFFER_SIZE] = {
+//     0.007352112425088f, 0.009421423151889f, 0.015426603040574f, 0.024780055419825f, 0.036566341700744f, 0.049631796255090f, 
+//     0.062697470097659f, 0.074484345011617f, 0.083838557840372f, 0.089844373342472f, 0.091913843429340f, 0.089844373342472f,
+//     0.083838557840372f, 0.074484345011617f, 0.062697470097659f, 0.049631796255090f, 0.036566341700744f, 0.024780055419825f,
+//     0.015426603040574f, 0.009421423151889f, 0.007352112425088f
+// };
+
 const float coef[BUFFER_SIZE] = {
-    0.007352112425088f, 0.009421423151889f, 0.015426603040574f, 0.024780055419825f, 0.036566341700744f, 0.049631796255090f, 
-    0.062697470097659f, 0.074484345011617f, 0.083838557840372f, 0.089844373342472f, 0.091913843429340f, 0.089844373342472f,
-    0.083838557840372f, 0.074484345011617f, 0.062697470097659f, 0.049631796255090f, 0.036566341700744f, 0.024780055419825f,
-    0.015426603040574f, 0.009421423151889f, 0.007352112425088f
+    0.010334253955694f, 0.016287375789618f, 0.032962516319300f, 0.057140845242106f, 0.084059972474792f, 0.108371465577169f, 
+    0.125222710691704f, 0.131241719899237f, 0.125222710691704f, 0.108371465577169f, 0.084059972474792f, 0.057140845242106f, 
+    0.032962516319300f, 0.016287375789618f, 0.010334253955694f
 };
 
 enc_rot_t enc_rot;
@@ -98,7 +105,7 @@ void main()
     sleep_ms(5000);
     motor_config(&motor_a, &motor_conf);
 
-    motor_set_lvl(&motor_a, 0);
+    motor_set_lvl(&motor_a, 80);
 
     encoder_init(&enc, &enc_config, fir_state, (void *)isr_encoder);
     // encoder_rot_config(&enc_rot, &enc_rot_conf, (void *)master_callback);
@@ -107,11 +114,12 @@ void main()
         encoder_get_freq(&enc);
         encoder_get_rpm_filtered(&enc);
         // encoder_get_rpm_raw(&enc);
-        // printf("%.2f\n", enc.rpm_filtered);
-        pid_set_rpm(enc.rpm_filtered, SETPOINT, &pid);
-        motor_set_lvl(&motor_a, pid.last_output);
-        printf("%.2f, %.2f, %.2f, %.2f\n", enc.rpm_filtered, pid.current_error, SETPOINT, pid.last_output);
-        printf("Contador; %d, Direccion: %d\n", enc_rot.counter, enc_rot.event);
+        // printf("%.2f\n", enc.freq);
+        printf("%.2f, %.2f, %.2f\n",enc.freq, enc.rpm_raw, enc.rpm_filtered);
+        // pid_set_rpm(enc.rpm_filtered, SETPOINT, &pid);
+        // motor_set_lvl(&motor_a, pid.last_output);
+        // printf("%.2f, %.2f, %.2f, %.2f\n", enc.rpm_filtered, pid.current_error, SETPOINT, pid.last_output);
+        // printf("Contador; %d, Direccion: %d\n", enc_rot.counter, enc_rot.event);
         sleep_ms(SAMPLE_RATE_MS);
     }
 }

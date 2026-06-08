@@ -31,7 +31,7 @@ void encoder_init(encoder_t *enc, encoder_config_t *conf_enc, float *fir_state, 
                     enc->internal.fir_state,
                     BLOCK_SIZE);
 
-    gpio_set_irq_enabled_with_callback(enc->config.pin, GPIO_IRQ_EDGE_RISE, true, isr);
+    gpio_set_irq_enabled_with_callback(enc->config.pin, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, isr);
 }
 
 void encoder_get_freq(encoder_t *enc){
@@ -46,7 +46,7 @@ void encoder_get_freq(encoder_t *enc){
     enc->internal.last_pulses = actual_pulses;
 
     if(delta_tiempo_us > 0){
-        enc->freq = ((float)delta_pulses * US_TO_MS * MS_TO_S) / delta_tiempo_us;
+        enc->freq = ((float)delta_pulses * US_TO_MS * MS_TO_S) / (delta_tiempo_us * 2.0f);
         return;
     }
     enc->freq = 0.0f;
