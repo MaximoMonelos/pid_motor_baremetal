@@ -4,6 +4,7 @@
 #include "motor.h"
 #include "driver_encoder_optico.h"
 #include "encoder_rot.h"
+#include "setpoint_gen.h"
 
 #define PIN_PWM         17
 #define PWM_FREQ        15000
@@ -21,11 +22,8 @@
 #define NUM_TAPS        BUFFER_SIZE
 #define BLOCK_SIZE      1
 #define MS_TO_S         1000.0f
-#define SETPOINT        500.0f
+
 #define DEADBAND        10
-#define PIN_DT 13
-#define PIN_CLK 12
-#define PIN_SW 14
 
 static float32_t fir_state[BLOCK_SIZE + NUM_TAPS - 1];
 
@@ -42,13 +40,7 @@ const float coef[BUFFER_SIZE] = {
     0.032962516319300f, 0.016287375789618f, 0.010334253955694f
 };
 
-enc_rot_t enc_rot;
 
-enc_rot_conf_t enc_rot_conf = {
-    .pin_clk = PIN_CLK,
-    .pin_dt = PIN_DT,
-    .pin_sw = PIN_SW,
-};
 
 arm_fir_instance_f32 fir;
 
@@ -84,18 +76,17 @@ motor_config_t motor_conf = {
     .frequency_hz = PWM_FREQ,
 };
 
+setpoint_gen_config_t sp_config = {
+    .mode = SETPOINT_MODE_RAMP,
+    .target_value = 500.0f,
+    .ramp_rate = 50.0f,      // 100 RPM por segundo
+};
+
+setpoint_gen_t sp_gen;
+
 void isr_encoder(uint gpio, uint32_t events){
     if(gpio == PIN_ENCODER){
         enc.internal.counter_pulses++;
-    }
-}
-
-void master_callback(uint gpio, uint32_t events){
-    if (gpio == PIN_ENCODER){
-        isr_encoder(gpio, events);
-    }
-    else if (gpio == PIN_CLK || gpio == PIN_SW){
-        encoder_rot_isr(gpio, events);
     }
 }
 
@@ -104,22 +95,30 @@ void main()
     stdio_init_all();
     sleep_ms(5000);
     motor_config(&motor_a, &motor_conf);
-
-    motor_set_lvl(&motor_a, 80);
+    motor_set_lvl(&motor_a, 0);
 
     encoder_init(&enc, &enc_config, fir_state, (void *)isr_encoder);
-    // encoder_rot_config(&enc_rot, &enc_rot_conf, (void *)master_callback);
+    setpoint_gen_init(&sp_gen, &sp_config);
 
     while (true){
+        // 1. Leer velocidad actual
         encoder_get_freq(&enc);
         encoder_get_rpm_filtered(&enc);
-        // encoder_get_rpm_raw(&enc);
-        // printf("%.2f\n", enc.freq);
-        printf("%.2f, %.2f, %.2f\n",enc.freq, enc.rpm_raw, enc.rpm_filtered);
-        // pid_set_rpm(enc.rpm_filtered, SETPOINT, &pid);
-        // motor_set_lvl(&motor_a, pid.last_output);
-        // printf("%.2f, %.2f, %.2f, %.2f\n", enc.rpm_filtered, pid.current_error, SETPOINT, pid.last_output);
-        // printf("Contador; %d, Direccion: %d\n", enc_rot.counter, enc_rot.event);
+
+        // 2. Actualizar setpoint (avanza la rampa si corresponde)
+        setpoint_gen_update(&sp_gen);
+
+        // 3. Calcular PID con el setpoint actual
+        pid_set_rpm(enc.rpm_filtered, sp_gen.current_value, &pid);
+        motor_set_lvl(&motor_a, pid.last_output);
+
+        // 4. Log para monitoreo
+        printf("%.2f, %.2f, %.2f, %.2f\n", 
+               enc.rpm_filtered, 
+               sp_gen.current_value,
+               pid.current_error, 
+               pid.last_output);
+
         sleep_ms(SAMPLE_RATE_MS);
     }
 }

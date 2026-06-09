@@ -45,6 +45,7 @@ add_executable(${PROJECT_NAME}
     logging.c 
     driver_encoder_optico.c
     encoder_rot.c
+    setpoint_gen.c
 )
 
 pico_set_program_name(${PROJECT_NAME} "PID_Baremetal_App")
