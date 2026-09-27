@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "pico/stdlib.h"
 #include "pid.h"
 #include "motor.h"
@@ -6,14 +7,14 @@
 #include "encoder_rot.h"
 #include "setpoint_gen.h"
 
-#define PIN_PWM         17
+#define PIN_PWM         13
 #define PWM_FREQ        15000
 #define CLK_DIV         1
 #define PWM_WRAP        3750
 //----Motor A---
-#define PIN_A_1         22
-#define PIN_A_2         20
-#define PIN_ENCODER     11
+#define PIN_A_1         15
+#define PIN_A_2         14
+#define PIN_ENCODER     16
 #define TICKS_ENCODER   10.0f
 
 #define SAMPLE_RATE_MS  50u
@@ -26,6 +27,10 @@
 #define DEADBAND        10
 
 static float32_t fir_state[BLOCK_SIZE + NUM_TAPS - 1];
+// ----------------------------------------------------------------------------------
+// -------------------------------AGREGAR ANTIWINDUP---------------------------------
+// ----------------------------------------------------------------------------------
+
 
 // const float coef[BUFFER_SIZE] = {
 //     0.007352112425088f, 0.009421423151889f, 0.015426603040574f, 0.024780055419825f, 0.036566341700744f, 0.049631796255090f, 
@@ -90,7 +95,7 @@ void isr_encoder(uint gpio, uint32_t events){
     }
 }
 
-void main()
+int main()
 {   
     stdio_init_all();
     sleep_ms(5000);
@@ -100,25 +105,57 @@ void main()
     encoder_init(&enc, &enc_config, fir_state, (void *)isr_encoder);
     setpoint_gen_init(&sp_gen, &sp_config);
 
+    absolute_time_t next_control_time = make_timeout_time_ms(50);
+    absolute_time_t next_serial_time = make_timeout_time_ms(5);
+    absolute_time_t next_log_time = make_timeout_time_ms(100);
+
+    char buffer[16];
+    int buf_idx = 0;
+
     while (true){
-        // 1. Leer velocidad actual
-        encoder_get_freq(&enc);
-        encoder_get_rpm_filtered(&enc);
+        absolute_time_t now = get_absolute_time();
 
-        // 2. Actualizar setpoint (avanza la rampa si corresponde)
-        setpoint_gen_update(&sp_gen);
+        // 1. Tarea de Control (50ms)
+        if (absolute_time_diff_us(now, next_control_time) <= 0) {
+            encoder_get_freq(&enc);
+            encoder_get_rpm_filtered(&enc);
+            setpoint_gen_update(&sp_gen);
+            pid_set_rpm(enc.rpm_filtered, sp_gen.current_value, &pid);
+            motor_set_lvl(&motor_a, pid.last_output);
 
-        // 3. Calcular PID con el setpoint actual
-        pid_set_rpm(enc.rpm_filtered, sp_gen.current_value, &pid);
-        motor_set_lvl(&motor_a, pid.last_output);
+            // Garantizar que no se corran los tiempos sumando 50ms a la marca
+            next_control_time = delayed_by_ms(next_control_time, 50);
+        }
 
-        // 4. Log para monitoreo
-        printf("%.2f, %.2f, %.2f, %.2f\n", 
-               enc.rpm_filtered, 
-               sp_gen.current_value,
-               pid.current_error, 
-               pid.last_output);
+        // 2. Tarea Serial (5ms)
+        if (absolute_time_diff_us(now, next_serial_time) <= 0) {
+            int c = getchar_timeout_us(0);
+            if (c != PICO_ERROR_TIMEOUT) {
+                if (c == '\n' || c == '\r') {
+                    buffer[buf_idx] = '\0';
+                    if (buf_idx > 0) {
+                        float val = atof(buffer);
+                        setpoint_gen_set_target(&sp_gen, val);
+                        buf_idx = 0;
+                    }
+                } else if (buf_idx < sizeof(buffer) - 1) {
+                    buffer[buf_idx++] = (char)c;
+                }
+            }
+            next_serial_time = delayed_by_ms(next_serial_time, 5);
+        }
 
-        sleep_ms(SAMPLE_RATE_MS);
+        // 3. Tarea de Log (50ms)
+        if (absolute_time_diff_us(now, next_log_time) <= 0) {
+            printf("%.2f, %.2f,%.2f, %.2f\n", 
+                   enc.rpm_filtered, 
+                   sp_gen.current_value,
+                   pid.current_error,
+                   pid.last_output);
+            
+            next_log_time = delayed_by_ms(next_log_time, 50);
+        }
     }
+
+    return 0;
 }
