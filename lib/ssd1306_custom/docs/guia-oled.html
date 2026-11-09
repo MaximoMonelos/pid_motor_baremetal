@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OLED · Guía visual de la biblioteca</title>
+<style>
+:root{color-scheme:light;--ink:#172b31;--muted:#566c72;--paper:#f3f5f1;--line:#d8e1da;--accent:#135e4b}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 system-ui,sans-serif}main{max-width:1160px;margin:auto;padding:44px 24px}small,.eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700}h1{font-size:clamp(32px,5vw,54px);line-height:1.1;letter-spacing:-.04em;margin:12px 0 18px}h2{font-size:25px;letter-spacing:-.025em;margin:0 0 12px}h3{font-size:17px;margin:0 0 8px}p{margin:0 0 16px}.lead{max-width:760px;font-size:19px;color:var(--muted)}.pill{display:inline-block;background:#d9ebdf;padding:5px 12px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:20px}.layout{display:grid;grid-template-columns:1fr 1fr;gap:24px}.card{background:white;border:1px solid var(--line);border-radius:18px;padding:24px;margin-bottom:24px}.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 22px}button{font:inherit;cursor:pointer;border:1px solid var(--line);background:white;color:var(--ink);padding:9px 16px;border-radius:9px}button:hover{background:#eaf2ec}button[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:white}button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #d89a39;outline-offset:3px}.device{background:#15312f;padding:28px;border-radius:14px;box-shadow:inset 0 0 0 1px #37524b}.device small{color:#a4cbb6;display:block;margin-bottom:16px}canvas{display:block;width:100%;aspect-ratio:2/1;background:#000;image-rendering:pixelated;border:8px solid #071b1b;border-radius:4px}.device p{color:#b5c7bd;font-size:12px;margin:12px 0 0}.controls{margin-top:20px;min-height:130px}label{display:block;font-size:14px;font-weight:600;margin-bottom:8px}input[type=range]{width:100%;accent-color:var(--accent)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.hint{font-size:14px;color:var(--muted);margin-top:12px}.codehead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;background:#112b30;color:#e0ede4;padding:20px;border-radius:12px;font:13px/1.65 Consolas,monospace}code{font-family:Consolas,monospace}output{font-variant-numeric:tabular-nums;font-weight:700}.status{border-collapse:collapse;width:100%;font-size:14px}.status td,.status th{text-align:left;padding:13px 8px;border-bottom:1px solid var(--line);vertical-align:top}.status th{color:var(--muted);font-weight:500}.ok{color:#136148;font-weight:700}.pending{color:#8c5912;font-weight:700}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.stepnum{color:var(--accent);font-size:28px;font-weight:700}details{border-top:1px solid var(--line);padding:16px 0}summary{cursor:pointer;font-weight:650}details p,details pre{margin-top:16px}a{color:var(--accent)}footer{color:var(--muted);font-size:13px;margin:28px 0}.notice{background:#fff5de;border-left:3px solid #c68e32;padding:14px 18px;border-radius:5px;font-size:14px}@media(max-width:780px){main{padding:28px 16px}.layout,.steps{grid-template-columns:1fr}.card{padding:18px}.device{padding:18px}h1{font-size:36px}.status{font-size:13px}}@media(prefers-reduced-motion:no-preference){button{transition:background .15s}}
+</style>
+</head>
+<body><main>
+<div class="eyebrow">SSD1306 CUSTOM / Raspberry Pi Pico</div>
+<h1>Tu pantalla, en pocas llamadas.</h1>
+<p class="lead">Ahora podés usar una capa opcional que distribuye pantallas completas: pasás etiquetas, unidades y valores, sin calcular coordenadas. Los componentes de abajo siguen disponibles para diseños personalizados.</p>
+<div class="pill">Estado revisado contra el código · 9 noviembre 2026</div>
+<section class="card"><h2>Nueva capa opcional: pantallas prearmadas</h2><p><a href="pantallas-superiores.png">Ver las pantallas reales generadas por el código C</a></p><p>Enlazá <code>ssd1306_screens</code> para usar mediciones con paginado, indicador con barra, menús anidados, mensajes y edición numérica. Las pantallas se distribuyen solas. Enter confirma; Back cancela el borrador sin cambiar tu variable.</p><pre><code>// En la actualización de pantalla:
+float valores[] = {rpm, referencia, pwm};
+ssd1306_screens_update(&amp;ui, MONITOR, valores, 3);
+ssd1306_screens_show(&amp;ui); // No reenvía una imagen idéntica.</code></pre><p style="margin-top:16px">En VS Code: <strong>Terminal → Run Task → Run Screens Demo</strong>. Usa I²C0, SDA GP4 y SCL GP1. <a href="capa-pantallas.md">Guía con configuración completa</a> · <a href="../examples/screens_demo/main.c">Demo de la capa superior</a>.</p></section>
+<section class="card">
+<h2>Probá los componentes de base</h2>
+<p>La vista reproduce los píxeles y la fuente 5×8 de la biblioteca. Es una simulación del dibujo en RAM: no ejecuta C ni prueba la comunicación con la Pico.</p>
+<div class="tabs" role="tablist" aria-label="Componente">
+<button id="tab-text" role="tab" aria-selected="true" aria-controls="demo-panel">Mediciones</button>
+<button id="tab-menu" role="tab" aria-selected="false" aria-controls="demo-panel">Menús</button>
+<button id="tab-bar" role="tab" aria-selected="false" aria-controls="demo-panel">Barras</button>
+</div>
+<div class="layout" id="demo-panel" role="tabpanel" aria-labelledby="tab-text">
+<div><div class="device"><small>OLED / 128 × 64 píxeles</small><canvas id="oled" width="128" height="64" role="img" aria-label="Vista simulada de la pantalla OLED"></canvas><p>I²C0 · SDA GP4 · SCL GP1 · dirección 0x3C</p></div>
+<div class="controls">
+<div id="control-text"><label for="rpm">Medición: <output id="rpm-value">1500</output> RPM</label><input id="rpm" type="range" min="0" max="3000" value="1500" step="1"><p class="hint">Probá bajar de 1000 a 999. El campo borra el número anterior: no tenés que limpiar los dígitos a mano.</p></div>
+<div id="control-menu" hidden><div class="row"><button id="up">↑ Anterior</button><button id="down">↓ Siguiente</button><button id="enter">Abrir opción</button><button id="back" hidden>Volver</button></div><p class="hint" id="menu-detail">El resaltado y el desplazamiento ya están resueltos. La acción de cada opción la define tu aplicación.</p></div>
+<div id="control-bar" hidden><label for="progress">Valor: <output id="progress-value">50</output> / 100</label><input id="progress" type="range" min="-25" max="125" value="50"><label class="row"><input id="vertical" type="checkbox"> Barra vertical</label><p class="hint">Rango configurado: 0 a 100. Fuera del rango se muestra vacía o completa. Al bajar el valor, se borra el relleno sobrante.</p></div>
+</div></div>
+<div><div class="codehead"><h3 id="code-title">Una vez: configurar. Después: actualizar.</h3><button id="copy" aria-label="Copiar ejemplo C">Copiar C</button></div><pre><code id="sample"></code></pre><p class="hint">Los ejemplos suponen <code>oled</code> inicializada. Las funciones devuelven un estado; comprobá <code>SSD1306_OK</code> en tu aplicación.</p></div>
+</div></section>
+<section class="card"><h2>Qué está resuelto hoy</h2>
+<table class="status"><thead><tr><th>Necesidad</th><th>Estado</th><th>Qué tenés que hacer vos</th></tr></thead><tbody>
+<tr><td>Mediciones y unidades</td><td class="ok">Implementado</td><td>Elegir el rectángulo y formato. El campo borra el valor anterior, alinea y recorta el texto.</td></tr>
+<tr><td>Menú de opciones</td><td class="ok">Implementado</td><td>Pasar las etiquetas y los eventos de subir/bajar. El módulo resalta y desplaza la lista.</td></tr>
+<tr><td>Barras</td><td class="ok">Implementado</td><td>Definir mínimo, máximo y tamaño. Actualizar con un valor; admite negativos y decimales.</td></tr>
+<tr><td>Comunicación y errores</td><td class="ok">Implementado</td><td>Configurar I²C y GPIO. Comprobar los retornos de inicialización y envío.</td></tr>
+<tr><td>Demo de la app del motor</td><td class="ok">Implementado</td><td>Cargar la demo: muestra lecturas simuladas, menús y patrones de pantalla.</td></tr>
+<tr><td>Pantallas desde una lista de datos</td><td class="ok">Implementado</td><td>Pasar título, etiquetas, unidades y valores. La capa opcional los distribuye y pagina automáticamente.</td></tr>
+<tr><td>Submenús y edición de parámetros</td><td class="ok">Implementado</td><td>Declarar destinos, rangos y paso. La app conecta el encoder y aplica el valor confirmado; la capa maneja navegación, borrador y cancelación.</td></tr>
+<tr><td>Prueba física e integración al PID</td><td class="pending">Sin confirmar</td><td>Se verificaron compilación y dibujo simulado. No hay confirmación aquí de prueba física exitosa ni integración en el motor.</td></tr>
+</tbody></table></section>
+<section class="card"><h2>El uso siempre sigue tres pasos</h2><div class="steps">
+<div><div class="stepnum">01</div><h3>Preparar</h3><p>Inicializás la OLED y configurás campos, barras o menú una vez.</p></div>
+<div><div class="stepnum">02</div><h3>Actualizar</h3><p>Pasás la medición, el texto, el valor de la barra o el movimiento del menú. Eso modifica la imagen en RAM.</p></div>
+<div><div class="stepnum">03</div><h3>Mostrar</h3><p>Llamás a <code>ssd1306_show(&amp;oled)</code> después de preparar todo. No hace falta enviar cada elemento por separado.</p></div>
+</div><p class="notice">Podés actualizar desde <code>app_display_update()</code> cuando le toque a la pantalla. La biblioteca no decide el período ni crea tareas; el envío por I²C es bloqueante y tiene timeout.</p></section>
+<section class="card"><h2>Lo mínimo para empezar</h2>
+<details><summary>Inicializar la pantalla con los pines de tu placa</summary><pre><code>#include "ssd1306_widgets.h"
+
+static ssd1306_t oled = {0};
+
+bool display_init(void)
+{
+    i2c_init(i2c0, 400000);
+    gpio_set_function(4, GPIO_FUNC_I2C); // SDA
+    gpio_set_function(1, GPIO_FUNC_I2C); // SCL
+    gpio_pull_up(4);
+    gpio_pull_up(1);
+
+    return ssd1306_init(&amp;oled, 128, 64, 0x3C,
+                        i2c0, SSD1306) == SSD1306_OK;
+}</code></pre><p>La instancia debe empezar en cero y permanecer válida. El driver reserva el framebuffer internamente; <code>ssd1306_deinit()</code> lo libera. El SDK y los pines se configuran en la aplicación.</p></details>
+<details><summary>¿Qué significan x, y, ancho, alto y escala?</summary><p>El origen está arriba a la izquierda: <code>x=0, y=0</code>. En una OLED 128×64, las posiciones llegan hasta <code>x=127, y=63</code>. Un campo es un rectángulo reservado para texto. La escala 1 usa caracteres 5×8, la escala 2 los duplica. El campo completo debe entrar en la pantalla.</p></details>
+<details><summary>¿Qué pasa si el texto no entra?</summary><p>Se dibuja la parte que entra y se devuelve <code>SSD1306_ERR_TRUNCATED</code>. Los campos usan ASCII imprimible: todavía no hay soporte UTF-8 para tildes o ñ. Para evitar restos, actualizá siempre el mismo campo en lugar de dibujar texto suelto encima.</p></details>
+<details><summary>¿Cómo conecto el encoder al menú de componentes?</summary><p>Cuando detectás un paso del encoder llamás a <code>ssd1306_menu_move(&amp;menu, +1)</code> o <code>-1</code>. Al presionar el botón, tu aplicación consulta <code>menu.selected</code> y abre la pantalla elegida. La biblioteca no lee GPIO ni modifica ganancias del PID.</p></details>
+<details><summary>¿Qué faltaría para que sea todavía más fácil?</summary><p>Esa capa ya está implementada como <code>ssd1306_screens</code>. La siguiente ampliación posible sería persistir configuraciones en flash o agregar otros diseños. La capa actual resuelve distribución, navegación, edición y detección de cambios; tu aplicación conecta sensores, encoder y lógica del motor.</p></details>
+</section>
+<footer>Referencia: <a href="../include/ssd1306_widgets.h">API de componentes</a> · <a href="../examples/motor_demo/main.c">Demo en Pico</a> · <a href="../examples/motor_demo/demo_ui.c">Pantallas del motor</a>. La simulación funciona sin conexión y no controla hardware.</footer>
+</main>
+<script>
+'use strict';
+// Font bytes are filled from the library's font.h when this guide is generated.
+const font = [8,5,1,32,126,0,0,0,0,0,0,0,95,0,0,0,7,0,7,0,20,127,20,127,20,36,42,127,42,18,35,19,8,100,98,54,73,86,32,80,0,8,7,3,0,0,28,34,65,0,0,65,34,28,0,42,28,127,28,42,8,8,62,8,8,0,128,112,48,0,8,8,8,8,8,0,0,96,96,0,32,16,8,4,2,62,81,73,69,62,0,66,127,64,0,114,73,73,73,70,33,65,73,77,51,24,20,18,127,16,39,69,69,69,57,60,74,73,73,49,65,33,17,9,7,54,73,73,73,54,70,73,73,41,30,0,0,20,0,0,0,64,52,0,0,0,8,20,34,65,20,20,20,20,20,0,65,34,20,8,2,1,89,9,6,62,65,93,89,78,124,18,17,18,124,127,73,73,73,54,62,65,65,65,34,127,65,65,65,62,127,73,73,73,65,127,9,9,9,1,62,65,65,81,115,127,8,8,8,127,0,65,127,65,0,32,64,65,63,1,127,8,20,34,65,127,64,64,64,64,127,2,28,2,127,127,4,8,16,127,62,65,65,65,62,127,9,9,9,6,62,65,81,33,94,127,9,25,41,70,38,73,73,73,50,3,1,127,1,3,63,64,64,64,63,31,32,64,32,31,63,64,56,64,63,99,20,8,20,99,3,4,120,4,3,97,89,73,77,67,0,127,65,65,65,2,4,8,16,32,0,65,65,65,127,4,2,1,2,4,64,64,64,64,64,0,3,7,8,0,32,84,84,120,64,127,40,68,68,56,56,68,68,68,40,56,68,68,40,127,56,84,84,84,24,0,8,126,9,2,24,164,164,156,120,127,8,4,4,120,0,68,125,64,0,32,64,64,61,0,127,16,40,68,0,0,65,127,64,0,124,4,120,4,120,124,8,4,4,120,56,68,68,68,56,252,24,36,36,24,24,36,36,24,252,124,8,4,4,8,72,84,84,84,36,4,4,63,68,36,60,64,64,32,124,28,32,64,32,28,60,64,48,64,60,68,40,16,40,68,76,144,144,144,124,68,100,84,76,68,0,8,54,65,0,0,0,119,0,0,0,65,54,8,0,2,1,2,4,2];
+const $=id=>document.getElementById(id), canvas=$('oled'), ctx=canvas.getContext('2d');
+let mode='text', selected=0, first=0, opened=false;
+const labels=['Monitor motor','Referencia RPM','Ajustes PID','Salida PWM','Estado motor','Prueba de pantalla'];
+const pixels=new Uint8Array(128*64);
+function pixel(x,y,on){if(x>=0&&x<128&&y>=0&&y<64)pixels[y*128+x]=on?1:0;}
+function rect(x,y,w,h,on){for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)pixel(i,j,on);}
+function field(x,y,w,h,scale,str,align='left',inverted=false){
+ rect(x,y,w,h,inverted);const cell=6*scale,n=Math.min(str.length,Math.floor((w+scale)/cell)),tw=n?n*cell-scale:0;
+ let ox=x+(align==='right'?w-tw:align==='center'?Math.floor((w-tw)/2):0),oy=y+Math.max(0,Math.floor((h-8*scale)/2));
+ for(let i=0;i<n;i++){let c=str.charCodeAt(i);if(c<32||c>126)c=63;for(let col=0;col<5;col++){let bits=font[5+(c-32)*5+col];for(let row=0;row<8;row++)if(bits&(1<<row))for(let dy=0;dy<scale;dy++)for(let dx=0;dx<scale;dx++)if(oy+row*scale+dy<y+h)pixel(ox+i*cell+col*scale+dx,oy+row*scale+dy,!inverted);}}
+}
+function progress(x,y,w,h,value,vertical=false){rect(x,y,w,h,1);rect(x+1,y+1,w-2,h-2,0);const fill=Math.round(Math.max(0,Math.min(1,value/100))*(vertical?h-2:w-2));if(vertical)rect(x+1,y+h-1-fill,w-2,fill,1);else rect(x+1,y+1,fill,h-2,1);}
+function paint(){ctx.fillStyle='#020808';ctx.fillRect(0,0,128,64);ctx.fillStyle='#d6fff2';for(let y=0;y<64;y++)for(let x=0;x<128;x++)if(pixels[y*128+x])ctx.fillRect(x,y,1,1);}
+function render(){
+ pixels.fill(0);const rpm=Number($('rpm').value),v=Number($('progress').value),vertical=$('vertical').checked;
+ $('rpm-value').textContent=rpm;$('progress-value').textContent=v;
+ if(mode==='text'){
+  field(0,0,128,10,1,'MONITOR MOTOR','center',true);field(0,16,128,16,2,rpm+' RPM');field(0,35,128,8,1,'Referencia: 1500 RPM');progress(0,48,128,12,rpm/30);
+  canvas.setAttribute('aria-label',`Monitor: ${rpm} RPM, referencia 1500 RPM`);
+  $('sample').textContent=`// Una vez: reservar el campo de medición.
+ssd1306_text_field_t campo = {
+    .x = 0, .y = 16,
+    .width = 128, .height = 16,
+    .scale = 2,
+    .align = SSD1306_ALIGN_LEFT
+};
+
+// En cada actualización de la pantalla:
+ssd1306_field_printf(&oled, &campo,
+                     "%.0f RPM", rpm);
+ssd1306_show(&oled);
+
+// Medición mostrada ahora: ${rpm} RPM.
+// El campo borra el contenido anterior.`;
+ }else if(mode==='menu'){
+  field(0,0,128,10,1,opened?labels[selected]:'MENU MOTOR','center',true);
+  if(opened){field(0,22,128,8,1,'Opcion seleccionada:');field(0,34,128,8,1,String(selected));field(0,54,128,8,1,'Accion: tu aplicacion');}
+  else{if(selected<first)first=selected;if(selected-first>=4)first=selected-3;for(let row=0;row<4&&first+row<labels.length;row++)field(0,12+row*10,128,10,1,labels[first+row],'left',first+row===selected);field(0,56,128,8,1,`${selected+1}/6`);}
+  $('back').hidden=!opened;$('menu-detail').textContent=opened?`Tu aplicación recibe menu.selected = ${selected} y decide qué hacer con «${labels[selected]}».`:'El resaltado y el desplazamiento ya están resueltos. La acción de cada opción la define tu aplicación.';
+  canvas.setAttribute('aria-label',`Menú: ${labels[selected]}, opción ${selected+1} de 6`);
+  $('sample').textContent=`// Una vez: conservar lista y menú en memoria.
+const char *const opciones[] = {
+    "Monitor motor", "Referencia RPM",
+    "Ajustes PID", "Salida PWM",
+    "Estado motor", "Prueba de pantalla"
+};
+ssd1306_menu_t menu = {
+    .items = opciones, .count = 6
+};
+ssd1306_text_field_t area = {
+    .x = 0, .y = 12,
+    .width = 128, .height = 40,
+    .scale = 1
+};
+
+// Cuando gira el encoder:
+ssd1306_menu_move(&menu, +1); // -1: subir
+
+// Para dibujar:
+ssd1306_menu_draw(&oled, &menu, &area);
+ssd1306_show(&oled);
+
+// Al pulsar: tu app consulta menu.selected.
+// Selección de esta simulación: ${selected}.`;
+ }else{
+  field(0,0,128,10,1,'SALIDA PWM','center',true);field(0,15,vertical?100:128,16,2,v+' %');
+  if(vertical)progress(112,12,16,50,v,true);else progress(0,40,128,12,v);
+  field(0,55,100,8,1,'Min:0 / Max:100');canvas.setAttribute('aria-label',`Barra ${vertical?'vertical':'horizontal'}: valor ${v}, rango 0 a 100`);
+  $('sample').textContent=`// Una vez: crear la barra.
+ssd1306_bar_t barra;
+ssd1306_bar_config_t config = {
+    .x = ${vertical?112:0}, .y = ${vertical?12:40},
+    .width = ${vertical?16:128}, .height = ${vertical?50:12},
+    .min = 0, .max = 100,
+    .vertical = ${vertical?'true':'false'}
+};
+ssd1306_bar_init(&barra, &oled, &config);
+
+// Después: pasar solo el valor.
+ssd1306_bar_update(&barra, ${v}.0f);
+ssd1306_show(&oled);
+
+// Puede usarse con RPM, temperatura, etc.
+// Cambiás min y max en la configuración.`;
+ }
+ paint();
+}
+function selectMode(next){mode=next;for(const m of ['text','menu','bar']){$('tab-'+m).setAttribute('aria-selected',String(m===mode));$('control-'+m).hidden=m!==mode;}$('demo-panel').setAttribute('aria-labelledby','tab-'+next);render();}
+for(const m of ['text','menu','bar'])$('tab-'+m).addEventListener('click',()=>selectMode(m));
+for(const id of ['rpm','progress','vertical'])$(id).addEventListener('input',render);
+$('up').addEventListener('click',()=>{selected=Math.max(0,selected-1);opened=false;render();});
+$('down').addEventListener('click',()=>{selected=Math.min(labels.length-1,selected+1);opened=false;render();});
+$('enter').addEventListener('click',()=>{opened=true;render();});$('back').addEventListener('click',()=>{opened=false;render();});
+$('copy').addEventListener('click',async()=>{try{if(!navigator.clipboard)throw Error('clipboard');await navigator.clipboard.writeText($('sample').textContent);$('copy').textContent='Copiado';}catch(e){const selection=window.getSelection(),range=document.createRange();range.selectNodeContents($('sample'));selection.removeAllRanges();selection.addRange(range);$('copy').textContent='Seleccionado: Ctrl+C';}setTimeout(()=>{$('copy').textContent='Copiar C';},2200);});
+render();
+</script></body></html>

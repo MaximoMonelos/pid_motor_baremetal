@@ -28,7 +28,6 @@ void setpoint_gen_init(setpoint_gen_t *sp_gen, const setpoint_gen_config_t *conf
     }
 
     sp_gen->config = *config;
-    sp_gen->last_update = get_absolute_time();
 
     if(config->mode == SETPOINT_MODE_STEP){
         sp_gen->current_value = config->target_value;
@@ -48,7 +47,7 @@ void setpoint_gen_init(setpoint_gen_t *sp_gen, const setpoint_gen_config_t *conf
  *
  * @param[in,out] sp_gen  Puntero a la estructura del generador
  */
-void setpoint_gen_update(setpoint_gen_t *sp_gen){
+void setpoint_gen_update(setpoint_gen_t *sp_gen, float dt_s){
     if(sp_gen == NULL){
         return;
     }
@@ -63,30 +62,30 @@ void setpoint_gen_update(setpoint_gen_t *sp_gen){
         return;
     }
 
-    // Modo RAMP: calcular dt real
-    absolute_time_t now = get_absolute_time();
-    int64_t dt_us = absolute_time_diff_us(sp_gen->last_update, now);
-    float dt_s = (float)dt_us / 1000000.0f;
-    sp_gen->last_update = now;
+    if(dt_s <= 0.0f){
+        return;
+    }
 
     float delta = sp_gen->config.ramp_rate * dt_s;
 
     if(sp_gen->config.target_value > sp_gen->current_value){
         sp_gen->current_value += delta;
+
         if(sp_gen->current_value >= sp_gen->config.target_value){
             sp_gen->current_value = sp_gen->config.target_value;
             sp_gen->arrived = true;
         }
+
     } else if(sp_gen->config.target_value < sp_gen->current_value){
+
         sp_gen->current_value -= delta;
+
         if(sp_gen->current_value <= sp_gen->config.target_value){
             sp_gen->current_value = sp_gen->config.target_value;
-            sp_gen->arrived = true;
         }
-    } else {
-        // current_value == target_value
-        sp_gen->arrived = true;
     }
+        // current_value == target_value
+        sp_gen->arrived = (sp_gen->current_value == sp_gen->config.target_value);
 }
 
 /**

@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.13)
+project(screens_tests C)
+set(CMAKE_C_STANDARD 11)
+enable_testing()
+add_executable(screens_test screens_test.c
+    ../../src/ssd1306_screens.c ../../src/ssd1306_widgets.c ../../src/ssd1306.c)
+target_include_directories(screens_test PRIVATE stubs ../../include)
+target_compile_options(screens_test PRIVATE -Wall -Wextra -Werror)
+if(NOT WIN32)
+    target_link_libraries(screens_test PRIVATE m)
+endif()
+add_test(NAME screens_test COMMAND screens_test)

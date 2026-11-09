@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.13)
+project(encoder_rot_tests C)
+set(CMAKE_C_STANDARD 11)
+enable_testing()
+add_executable(encoder_rot_test encoder_rot_test.c ../../encoder_rot.c)
+target_include_directories(encoder_rot_test PRIVATE stubs ../..)
+target_compile_options(encoder_rot_test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME encoder_rot_test COMMAND encoder_rot_test)

@@ -92,7 +92,7 @@ graph TD
 
     subgraph "Capa de Infraestructura"
         LOG["logging.c / logging.h<br/>(Sistema de Logs)"]
-        CMSIS["CMSIS_lib<br/>(DSP: Filtro FIR)"]
+        CMSIS["lib/CMSIS_lib<br/>(DSP: Filtro FIR)"]
     end
 
     subgraph "Pico SDK"
@@ -1465,7 +1465,7 @@ pid_baremetal/
 │   ├── app_tasks.h / .c           # Definición de tareas del scheduler
 │   └── app_config.h               # Configuración centralizada (pines, etc.)
 │
-└── CMSIS_lib/                      # Librería externa (existente)
+└── lib/CMSIS_lib/                  # Librería externa (archivos incluidos)
 ```
 
 > [!TIP]

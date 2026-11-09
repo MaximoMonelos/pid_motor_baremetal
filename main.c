@@ -1,11 +1,12 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include "pico/stdlib.h"
 #include "pid.h"
 #include "motor.h"
 #include "driver_encoder_optico.h"
 #include "encoder_rot.h"
 #include "setpoint_gen.h"
+#include "setpoint_serial.h"
+#include "task_time.h"
 
 #define PIN_PWM         13
 #define PWM_FREQ        15000
@@ -15,7 +16,7 @@
 #define PIN_A_1         15
 #define PIN_A_2         14
 #define PIN_ENCODER     16
-#define TICKS_ENCODER   10.0f
+#define TICKS_ENCODER   25.0f
 
 #define SAMPLE_RATE_MS  50u
 // #define BUFFER_SIZE     21
@@ -23,6 +24,9 @@
 #define NUM_TAPS        BUFFER_SIZE
 #define BLOCK_SIZE      1
 #define MS_TO_S         1000.0f
+
+#define SERIAL_RATE_MS  5u
+#define LOG_RATE_MS     50u
 
 #define DEADBAND        10
 
@@ -95,8 +99,8 @@ void isr_encoder(uint gpio, uint32_t events){
     }
 }
 
-int main()
-{   
+int main(){
+       
     stdio_init_all();
     sleep_ms(5000);
     motor_config(&motor_a, &motor_conf);
@@ -105,55 +109,44 @@ int main()
     encoder_init(&enc, &enc_config, fir_state, (void *)isr_encoder);
     setpoint_gen_init(&sp_gen, &sp_config);
 
-    absolute_time_t next_control_time = make_timeout_time_ms(50);
-    absolute_time_t next_serial_time = make_timeout_time_ms(5);
-    absolute_time_t next_log_time = make_timeout_time_ms(100);
+    task_time_t control_time = {0};
+    task_time_t serial_time = {0};
+    task_time_t log_time = {0};
 
-    char buffer[16];
-    int buf_idx = 0;
+    if(!task_time_init(&control_time, SAMPLE_RATE_MS) || !task_time_init(&serial_time, SERIAL_RATE_MS) || !task_time_init(&log_time, LOG_RATE_MS)){
+        return 1;
+    }
+
+
+
+    // motor_set_lvl(&motor_a, 50);
 
     while (true){
-        absolute_time_t now = get_absolute_time();
 
         // 1. Tarea de Control (50ms)
-        if (absolute_time_diff_us(now, next_control_time) <= 0) {
+        if(task_time_ready(&control_time)){
             encoder_get_freq(&enc);
             encoder_get_rpm_filtered(&enc);
-            setpoint_gen_update(&sp_gen);
+
+            setpoint_gen_update(&sp_gen, control_time.dt_s);
+
             pid_set_rpm(enc.rpm_filtered, sp_gen.current_value, &pid);
             motor_set_lvl(&motor_a, pid.last_output);
-
-            // Garantizar que no se corran los tiempos sumando 50ms a la marca
-            next_control_time = delayed_by_ms(next_control_time, 50);
         }
 
         // 2. Tarea Serial (5ms)
-        if (absolute_time_diff_us(now, next_serial_time) <= 0) {
-            int c = getchar_timeout_us(0);
-            if (c != PICO_ERROR_TIMEOUT) {
-                if (c == '\n' || c == '\r') {
-                    buffer[buf_idx] = '\0';
-                    if (buf_idx > 0) {
-                        float val = atof(buffer);
-                        setpoint_gen_set_target(&sp_gen, val);
-                        buf_idx = 0;
-                    }
-                } else if (buf_idx < sizeof(buffer) - 1) {
-                    buffer[buf_idx++] = (char)c;
-                }
-            }
-            next_serial_time = delayed_by_ms(next_serial_time, 5);
+        if (task_time_ready(&serial_time)) {
+            setpoint_serial_update(&sp_gen);
         }
 
         // 3. Tarea de Log (50ms)
-        if (absolute_time_diff_us(now, next_log_time) <= 0) {
+        if (task_time_ready(&log_time)) {
             printf("%.2f, %.2f,%.2f, %.2f\n", 
                    enc.rpm_filtered, 
                    sp_gen.current_value,
                    pid.current_error,
                    pid.last_output);
-            
-            next_log_time = delayed_by_ms(next_log_time, 50);
+            // printf("%.2f, %.2f\n", enc.rpm_raw, enc.freq);            
         }
     }
 

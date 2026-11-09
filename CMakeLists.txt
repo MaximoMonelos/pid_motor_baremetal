@@ -34,7 +34,12 @@ project(pid_baremetal C CXX ASM)
 pico_sdk_init()
 
 # Add CMSIS library subdirectory
-add_subdirectory(CMSIS_lib)
+add_subdirectory(lib/CMSIS_lib)
+
+# OLED sources are included in this repository.
+set(SSD1306_BUILD_MOTOR_DEMO OFF)
+set(SSD1306_BUILD_SCREENS_DEMO OFF)
+add_subdirectory(lib/ssd1306_custom)
 
 # Add executable. Default name is the project name, version 0.1
 
@@ -46,6 +51,8 @@ add_executable(${PROJECT_NAME}
     driver_encoder_optico.c
     encoder_rot.c
     setpoint_gen.c
+    setpoint_serial.c
+    task_time.c
 )
 
 pico_set_program_name(${PROJECT_NAME} "PID_Baremetal_App")
@@ -59,13 +66,12 @@ target_link_libraries(${PROJECT_NAME}
         pico_stdlib
         hardware_pwm
         cmsis_lib
+        ssd1306::all
 )
 
 # Add the standard include files to the build
 target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
-        ${CMAKE_CURRENT_LIST_DIR}/CMSIS_lib/CMSIS-DSP/Include
-        ${CMAKE_CURRENT_LIST_DIR}/CMSIS_lib/CMSIS-DSP/PrivateInclude
 )
 
 pico_add_extra_outputs(${PROJECT_NAME})
